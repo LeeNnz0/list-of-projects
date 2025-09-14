@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Truck Dispatch System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen p-6">
+    <div class="max-w-4xl mx-auto">
+        <div class="bg-white rounded-xl shadow-lg p-8 mb-6">
+            <h1 class="text-3xl font-bold text-gray-800 mb-8 text-center">🚛 Truck Dispatch System</h1>
+            
+            <!-- Selection Form -->
+            <div class="space-y-6 mb-8">
+                <!-- Truck Type Selection -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">Select Truck Type</label>
+                    <div class="flex gap-3">
+                        <button id="denjoBtn" class="flex-1 p-4 border-2 border-gray-300 rounded-lg hover:border-blue-500 transition-colors text-center font-semibold" onclick="selectTruckType('denjo')">
+                            🚛 Denjo Trucks
+                        </button>
+                        <button id="subconBtn" class="flex-1 p-4 border-2 border-gray-300 rounded-lg hover:border-green-500 transition-colors text-center font-semibold" onclick="selectTruckType('subcon')">
+                            🚚 Subcon Trucks
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Plate Number Selection -->
+                <div id="plateSection" class="hidden">
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">Select Plate Number</label>
+                    <div id="plateButtons" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                    </div>
+                </div>
+
+                <!-- Location Selection -->
+                <div id="locationSection" class="hidden">
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">Select Location</label>
+                    <div id="locationButtons" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                    </div>
+                </div>
+
+                <!-- Site Selection -->
+                <div id="siteSection" class="hidden">
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">Select Site</label>
+                    <div id="siteButtons" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                    </div>
+                </div>
+
+                <!-- Date and Rate -->
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Date</label>
+                        <input type="date" id="dispatchDate" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    
+                    <div class="bg-blue-50 p-4 rounded-lg">
+                        <div class="text-sm font-semibold text-gray-700 mb-1">Current Rate</div>
+                        <div id="currentRate" class="text-2xl font-bold text-blue-600">₱0.00</div>
+                    </div>
+                </div>
+            </div>
+            
+            <button id="addDispatch" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>
+                Add Dispatch Entry
+            </button>
+        </div>
+        
+        <!-- Site Totals -->
+        <div class="bg-white rounded-xl shadow-lg p-8 mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">🏢 Site Totals</h2>
+            <div id="siteTotals" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="text-gray-500 text-center py-8 col-span-full">No sites added yet. Add dispatch entries to see totals!</div>
+            </div>
+        </div>
+
+        <!-- Dispatch Records -->
+        <div class="bg-white rounded-xl shadow-lg p-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">📋 Dispatch Records</h2>
+            <div id="dispatchRecords" class="space-y-4">
+                <div class="text-gray-500 text-center py-8">No dispatch records yet. Add your first entry above!</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data
+        const denjoPlates = [
+            'AAV 3315', 'ABD 2336', 'CAE 8359', 'MAK 4606', 'MAL 7663', 'NAJ 6390', 
+            'NAM 7981', 'NAM 7982', 'NAX 5523', 'NAZ 1509', 'NBA 1561', 'NBA 1570', 
+            'NBA 1573', 'NBA 1574', 'NDH 2626', 'NDM 3414', 'NDM 4083', 'NFZ 2650', 
+            'NFZ 2658', 'NGB 1550', 'NIF 1814', 'NKF 1653', 'NKF 1663'
+        ].sort();
+
+        const subconPlates = [
+            'ABH 293', 'ALA 7244', 'CAG 1899', 'CBP 881', 'KAS 6089', 'KAT 4965',
+            'MBF 6760', 'MBI 5795', 'MV 3160', 'NCK 6502', 'NES 3903', 'NES 7099', 
+            'NES 9440', 'NFO 1978', 'NFQ 1221', 'NFV 8013', 'NFX 7968', 'NGF 1435', 
+            'NGR 4654', 'NGL 9012', 'NID 4886', 'NII 253', 'NIK 7805', 'NKR 4609', 
+            'NKR 5128', 'NKR 5129', 'NKR 5130', 'NKR 5131', 'NQE 393', 'RFC 991', 
+            'RGZ 134', 'RNE 172'
+        ].sort();
+
+        const denjoRates = {
+            'ALABANG': 3928.57,
+            'BGC/TAGUIG': 3482.14,
+            'BICUTAN': 3705.36,
+            'CALOOCAN': 4107.14,
+            'CUBAO': 3928.57,
+            'FTI/ARCA SOUTH': 2857.14,
+            'LAS PINAS': 3928.57,
+            'MAKATI': 3348.21,
+            'MALABON': 4107.14,
+            'MANDALUYONG': 3660.71,
+            'MANILA': 4017.14,
+            'MUNTINLUPA': 3923.21,
+            'PARANAQUE': 3883.93,
+            'PASAY': 3928.57,
+            'PASIG': 3750,
+            'QC': 3928.57,
+            'SUCAT': 3839.29,
+            'VALENZUELA': 4821.43
+        };
+
+        const subconRates = {
+            'ALABANG': 2000,
+            'ARCA SOUTH/FTI': 1600,
+            'ASEANA': 1900,
+            'BBG': 1600,
+            'BGC/TAGUIG': 1600,
+            'CAVITE': 2300,
+            'FAIRVIEW': 2000,
+            'MAKATI': 1700,
+            'MANDALUYONG': 1900,
+            'MANILA': 2000,
+            'NUVALI': 2300,
+            'PARANAQUE': 1900,
+            'PASIG': 1700,
+            'QC': 2000
+        };
+
+        const locationSites = {
+            'ALABANG': [
+                'AMAIA STEPS ALABANG',
+                'AVIDA SUCAT',
+                'AVIDA TOWERS ARDANE T1',
+                'NUEVO T1 (CERCA B3 T1)',
+                'VIENTO T3'
+            ].sort(),
+            'ARCA SOUTH/FTI': [
+                'ARBOR LANES PHASE 3 BLOCK 4',
+                'ARBOR LANES PHASE 3 BLOCK 5',
+                'ARCA SOUTH PIE MALL',
+                'ARCA SOUTH PIE P1 BPO 1 (AGB) (1G2)',
+                'ARCA YARD',
+                'GARDENCOURT RESIDENCES – MOLAVE',
+                'GARDENCOURT RESIDENCES – NARRA',
+                'INTEGRATED BASEMENT PARKING',
+                'INTERACTIVE PARK',
+                'PARK CASCADES 1',
+                'PARK CASCADES B2 G B3',
+                'SEDA ARCA SOUTH',
+                'TR YNE ENTERPRISE PLAZA (XAVIER B1)',
+                'TR YNE PHASE 2',
+                'VERANDA',
+                'VIREO'
+            ].sort(),
+            'ASEANA': ['Site ASE1', 'Site ASE2'].sort(),
+            'BBG': ['Site BBG1', 'Site BBG2'].sort(),
+            'BGC/TAGUIG': [
+                'PARK EAST PLACE (MACE)',
+                'PARK TRIANGLE MALL (CHEWEE)',
+                'PARK TRIANGLE MALL (LIGHTSABER)',
+                'VERVE 1'
+            ].sort(),
+            'BICUTAN': ['Site B1', 'Site B2'].sort(),
+            'CALOOCAN': ['Site C1', 'Site C2'].sort(),
+            'CAVITE': ['Site CV1', 'Site CV2', 'Site CV3'].sort(),
+            'CUBAO': ['Site CB1', 'Site CB2', 'Site CB3'].sort(),
+            'FAIRVIEW': ['Site FV1', 'Site FV2'].sort(),
+            'FTI/ARCA SOUTH': ['Site FTI1', 'Site FTI2'].sort(),
+            'LAS PINAS': ['Site LP1', 'Site LP2'].sort(),
+            'MAKATI': [
+                'ASTELA T1 (CIRCUIT T5)',
+                'ASTELA T1 + PODIUM',
+                'AYALA MALLS GLORIETA',
+                'BPI HQ REDEVELOPMENT',
+                'CALLISTO 1',
+                'CALLISTO 2',
+                'CIRCUIT FLATS',
+                'GENTRY PLAZA',
+                'GENTRY RESIDENTIAL',
+                'GLORIETA REINVENTION',
+                'GREENBELT 1 REDEVELOPMENT',
+                'GREENBELT REINVENTION',
+                'HOLIDAY INN',
+                'LEGACY (VARIOUS PROJECT)',
+                'LTG LAND DEVELOPMENT AT MAKATI',
+                'MANDARIN ORIENTAL (ATG)',
+                'MERGENT RESIDENCES PHASE 1',
+                'MERGENT T1 + PODIUM',
+                'METROBANK',
+                'ONE AYALA AVE',
+                'PARK CENTRAL NORTH',
+                'PARK CENTRAL SOUTH',
+                'PARK VILLAS',
+                'PARKFORD SUITES',
+                'PARKFORD SUITES (LIFESAVER) AT MAKATI',
+                'PARKFORD SUITES 3',
+                'SEDA OAA (ORA SEDA HOTEL)',
+                'SHATTER SHY',
+                'SOUTHPOINT T2',
+                'SOUTHPOINT T3'
+            ].sort(),
+            'MALABON': ['Site ML1', 'Site ML2'].sort(),
+            'MANDALUYONG': [
+                'AMAIA SHAW',
+                'AVIDA TOWERS VERGE T2'
+            ].sort(),
+            'MANILA': [
+                'AMAIA SKIES AVENIDA'
+            ].sort(),
+            'MUNTINLUPA': ['Site MT1', 'Site MT2'].sort(),
+            'NUVALI': ['Site NV1', 'Site NV2'].sort(),
+            'PARANAQUE': [
+                'AYALA MALLS MANILA BAY'
+            ].sort(),
+            'PASAY': [
+                'AVIDA CENTRALIS (PRIME TAFT T4)',
+                'PATIO MADRIGAL T1'
+            ].sort(),
+            'PASIG': [
+                'PARKLINKS (BLOOM)',
+                'THE AMERITNE AT PORTICO',
+                'THE LATTICE'
+            ].sort(),
+            'QC': [
+                'ALP PARKLINKS NORTH (MANGO BRAVO)',
+                'ALP PARKLINKS SOUTH',
+                'AMAIA SKIES CUBAO T3',
+                'AMAIA STEP THE JUCTION PLACE CLARA',
+                'AMAIA STEPS JUNCTION DELICIA',
+                'OREAN PLACE 1',
+                'OREAN PLACE 2',
+                'PARKLINKS MALL',
+                'TRINOMA EXPANSION',
+                'VERTIS NORTH HYDRA',
+                'VERTIS NORTH PH1 T4 BPO',
+                'VERTIS NORTH PH1 T5 BPO'
+            ].sort(),
+            'SUCAT': ['Site S1', 'Site S2'].sort(),
+            'VALENZUELA': ['Site V1', 'Site V2'].sort()
+        };
+
+        let dispatchRecords = [];
+        let siteTotals = {};
+        let selectedTruckType = '';
+        let selectedPlate = '';
+        let selectedLocation = '';
+        let selectedSite = '';
+
+        // DOM elements
+        const dispatchDateInput = document.getElementById('dispatchDate');
+        const currentRateDiv = document.getElementById('currentRate');
+        const addDispatchBtn = document.getElementById('addDispatch');
+        const dispatchRecordsDiv = document.getElementById('dispatchRecords');
+        const siteTotalsDiv = document.getElementById('siteTotals');
+
+        // Load data from localStorage on page load
+        function loadData() {
+            const savedRecords = localStorage.getItem('dispatchRecords');
+            if (savedRecords) {
+                dispatchRecords = JSON.parse(savedRecords);
+                updateSiteTotals();
+                renderDispatchRecords();
+                renderSiteTotals();
+            }
+        }
+
+        // Save data to localStorage
+        function saveData() {
+            localStorage.setItem('dispatchRecords', JSON.stringify(dispatchRecords));
+        }
+
+        // Set today's date as default
+        dispatchDateInput.valueAsDate = new Date();
+
+        // Event listeners
+        addDispatchBtn.addEventListener('click', addDispatchRecord);
+
+        // Load saved data when page loads
+        loadData();
+
+        function selectTruckType(type) {
+            selectedTruckType = type;
+            selectedPlate = '';
+            selectedLocation = '';
+            selectedSite = '';
+            
+            // Update button styles
+            document.getElementById('denjoBtn').className = type === 'denjo' ? 
+                'flex-1 p-4 border-2 border-blue-500 bg-blue-50 rounded-lg text-center font-semibold text-blue-700' :
+                'flex-1 p-4 border-2 border-gray-300 rounded-lg hover:border-blue-500 transition-colors text-center font-semibold';
+            
+            document.getElementById('subconBtn').className = type === 'subcon' ? 
+                'flex-1 p-4 border-2 border-green-500 bg-green-50 rounded-lg text-center font-semibold text-green-700' :
+                'flex-1 p-4 border-2 border-gray-300 rounded-lg hover:border-green-500 transition-colors text-center font-semibold';
+            
+            // Show plate section and populate plates
+            const plateSection = document.getElementById('plateSection');
+            const plateButtons = document.getElementById('plateButtons');
+            plateSection.classList.remove('hidden');
+            
+            const plates = type === 'denjo' ? denjoPlates : subconPlates;
+            plateButtons.innerHTML = plates.map(plate => 
+                `<button class="p-2 border border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-sm font-medium" onclick="selectPlate('${plate}')">${plate}</button>`
+            ).join('');
+            
+            // Show location section and populate locations
+            const locationSection = document.getElementById('locationSection');
+            const locationButtons = document.getElementById('locationButtons');
+            locationSection.classList.remove('hidden');
+            
+            const rates = type === 'denjo' ? denjoRates : subconRates;
+            locationButtons.innerHTML = Object.keys(rates).map(location => 
+                `<button class="p-3 border border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-sm font-medium" onclick="selectLocation('${location}')">${location}</button>`
+            ).join('');
+            
+            // Hide site section initially
+            document.getElementById('siteSection').classList.add('hidden');
+            
+            updateRate();
+        }
+
+        function selectPlate(plate) {
+            selectedPlate = plate;
+            
+            // Update button styles
+            const plateButtons = document.getElementById('plateButtons');
+            plateButtons.innerHTML = (selectedTruckType === 'denjo' ? denjoPlates : subconPlates).map(p => 
+                `<button class="${p === plate ? 'p-2 border-2 border-blue-500 bg-blue-50 rounded-lg text-sm font-medium text-blue-700' : 'p-2 border border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-sm font-medium'}" onclick="selectPlate('${p}')">${p}</button>`
+            ).join('');
+            
+            updateRate();
+        }
+
+        function selectLocation(location) {
+            selectedLocation = location;
+            selectedSite = '';
+            
+            // Update location button styles
+            const rates = selectedTruckType === 'denjo' ? denjoRates : subconRates;
+            const locationButtons = document.getElementById('locationButtons');
+            locationButtons.innerHTML = Object.keys(rates).map(loc => 
+                `<button class="${loc === location ? 'p-3 border-2 border-blue-500 bg-blue-50 rounded-lg text-sm font-medium text-blue-700' : 'p-3 border border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-sm font-medium'}" onclick="selectLocation('${loc}')">${loc}</button>`
+            ).join('');
+            
+            // Show and populate site section
+            const siteSection = document.getElementById('siteSection');
+            const siteButtons = document.getElementById('siteButtons');
+            siteSection.classList.remove('hidden');
+            
+            if (locationSites[location]) {
+                siteButtons.innerHTML = locationSites[location].map(site => 
+                    `<button class="p-2 border border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-sm font-medium" onclick="selectSite('${site}')">${site}</button>`
+                ).join('');
+            }
+            
+            updateRate();
+        }
+
+        function selectSite(site) {
+            selectedSite = site;
+            
+            // Update site button styles
+            const siteButtons = document.getElementById('siteButtons');
+            siteButtons.innerHTML = locationSites[selectedLocation].map(s => 
+                `<button class="${s === site ? 'p-2 border-2 border-blue-500 bg-blue-50 rounded-lg text-sm font-medium text-blue-700' : 'p-2 border border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-sm font-medium'}" onclick="selectSite('${s}')">${s}</button>`
+            ).join('');
+            
+            updateRate();
+        }
+
+        function updateRate() {
+            if (!selectedTruckType || !selectedLocation) {
+                currentRateDiv.textContent = '₱0.00';
+                addDispatchBtn.disabled = true;
+                return;
+            }
+
+            const rates = selectedTruckType === 'denjo' ? denjoRates : subconRates;
+            const rate = rates[selectedLocation] || 0;
+            
+            currentRateDiv.textContent = `₱${rate.toLocaleString('en-PH', {minimumFractionDigits: 2})}`;
+            
+            // Enable add button if all fields are filled
+            const allFieldsFilled = selectedPlate && selectedLocation && selectedSite && dispatchDateInput.value;
+            addDispatchBtn.disabled = !allFieldsFilled;
+        }
+
+        function addDispatchRecord() {
+            const record = {
+                id: Date.now(),
+                truckType: selectedTruckType,
+                plateNumber: selectedPlate,
+                location: selectedLocation,
+                site: selectedSite,
+                date: dispatchDateInput.value,
+                rate: selectedTruckType === 'denjo' ? 
+                      denjoRates[selectedLocation] : 
+                      subconRates[selectedLocation]
+            };
+
+            dispatchRecords.push(record);
+            saveData(); // Save to localStorage
+            updateSiteTotals();
+            renderDispatchRecords();
+            renderSiteTotals();
+            
+            // Reset form
+            resetForm();
+            
+            // Show success message
+            showSuccessMessage();
+        }
+
+        function resetForm() {
+            selectedTruckType = '';
+            selectedPlate = '';
+            selectedLocation = '';
+            selectedSite = '';
+            
+            // Reset truck type buttons
+            document.getElementById('denjoBtn').className = 'flex-1 p-4 border-2 border-gray-300 rounded-lg hover:border-blue-500 transition-colors text-center font-semibold';
+            document.getElementById('subconBtn').className = 'flex-1 p-4 border-2 border-gray-300 rounded-lg hover:border-green-500 transition-colors text-center font-semibold';
+            
+            // Hide sections
+            document.getElementById('plateSection').classList.add('hidden');
+            document.getElementById('locationSection').classList.add('hidden');
+            document.getElementById('siteSection').classList.add('hidden');
+            
+            // Reset rate and button
+            currentRateDiv.textContent = '₱0.00';
+            addDispatchBtn.disabled = true;
+        }
+
+        function updateSiteTotals() {
+            siteTotals = {};
+            
+            dispatchRecords.forEach(record => {
+                const siteKey = `${record.location} - ${record.site}`;
+                if (!siteTotals[siteKey]) {
+                    siteTotals[siteKey] = {
+                        location: record.location,
+                        site: record.site,
+                        total: 0,
+                        count: 0,
+                        denjoTotal: 0,
+                        subconTotal: 0,
+                        denjoCount: 0,
+                        subconCount: 0
+                    };
+                }
+                
+                siteTotals[siteKey].total += record.rate;
+                siteTotals[siteKey].count += 1;
+                
+                if (record.truckType === 'denjo') {
+                    siteTotals[siteKey].denjoTotal += record.rate;
+                    siteTotals[siteKey].denjoCount += 1;
+                } else {
+                    siteTotals[siteKey].subconTotal += record.rate;
+                    siteTotals[siteKey].subconCount += 1;
+                }
+            });
+        }
+
+        function renderSiteTotals() {
+            if (Object.keys(siteTotals).length === 0) {
+                siteTotalsDiv.innerHTML = '<div class="text-gray-500 text-center py-8 col-span-full">No sites added yet. Add dispatch entries to see totals!</div>';
+                return;
+            }
+
+            siteTotalsDiv.innerHTML = Object.entries(siteTotals).map(([siteKey, data]) => `
+                <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200">
+                    <div class="text-sm font-semibold text-gray-600 mb-1">${data.location}</div>
+                    <div class="text-lg font-bold text-gray-800 mb-4">${data.site}</div>
+                    <div class="space-y-3">
+                        ${data.denjoCount > 0 ? `
+                        <div class="bg-blue-100 rounded-lg p-3">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-sm font-bold text-blue-700">DENJO TOTAL:</span>
+                                <span class="text-lg font-bold text-blue-700">₱${data.denjoTotal.toLocaleString('en-PH', {minimumFractionDigits: 2})}</span>
+                            </div>
+                            <div class="text-xs text-blue-600">${data.denjoCount} trips</div>
+                        </div>
+                        ` : ''}
+                        ${data.subconCount > 0 ? `
+                        <div class="bg-green-100 rounded-lg p-3">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-sm font-bold text-green-700">SUBCON TOTAL:</span>
+                                <span class="text-lg font-bold text-green-700">₱${data.subconTotal.toLocaleString('en-PH', {minimumFractionDigits: 2})}</span>
+                            </div>
+                            <div class="text-xs text-green-600">${data.subconCount} trips</div>
+                        </div>
+                        ` : ''}
+                        <div class="border-t border-gray-300 pt-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm font-bold text-gray-700">GRAND TOTAL:</span>
+                                <span class="text-xl font-bold text-purple-600">₱${data.total.toLocaleString('en-PH', {minimumFractionDigits: 2})}</span>
+                            </div>
+                            <div class="text-xs text-gray-600">${data.count} total trips</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderDispatchRecords() {
+            if (dispatchRecords.length === 0) {
+                dispatchRecordsDiv.innerHTML = '<div class="text-gray-500 text-center py-8">No dispatch records yet. Add your first entry above!</div>';
+                return;
+            }
+
+            dispatchRecordsDiv.innerHTML = dispatchRecords.map(record => `
+                <div class="bg-gray-50 rounded-lg p-4 border-l-4 ${record.truckType === 'denjo' ? 'border-blue-500' : 'border-green-500'}">
+                    <div class="flex justify-between items-start">
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 flex-1">
+                            <div>
+                                <div class="text-xs font-semibold text-gray-500 uppercase">Truck Type</div>
+                                <div class="font-semibold ${record.truckType === 'denjo' ? 'text-blue-600' : 'text-green-600'}">${record.truckType.toUpperCase()}</div>
+                            </div>
+                            <div>
+                                <div class="text-xs font-semibold text-gray-500 uppercase">Plate Number</div>
+                                <div class="font-semibold">${record.plateNumber}</div>
+                            </div>
+                            <div>
+                                <div class="text-xs font-semibold text-gray-500 uppercase">Location</div>
+                                <div class="font-semibold">${record.location}</div>
+                            </div>
+                            <div>
+                                <div class="text-xs font-semibold text-gray-500 uppercase">Site</div>
+                                <div class="font-semibold">${record.site}</div>
+                            </div>
+                            <div>
+                                <div class="text-xs font-semibold text-gray-500 uppercase">Date</div>
+                                <div class="font-semibold">${new Date(record.date).toLocaleDateString('en-PH')}</div>
+                            </div>
+                            <div>
+                                <div class="text-xs font-semibold text-gray-500 uppercase">Rate</div>
+                                <div class="font-bold text-lg text-green-600">₱${record.rate.toLocaleString('en-PH', {minimumFractionDigits: 2})}</div>
+                            </div>
+                        </div>
+                        <div class="ml-4 flex gap-2">
+                            <button onclick="editRecord(${record.id})" class="text-blue-500 hover:text-blue-700 font-semibold">
+                                ✏️ Edit
+                            </button>
+                            <button onclick="removeRecord(${record.id})" class="text-red-500 hover:text-red-700 font-semibold">
+                                ✕
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function editRecord(id) {
+            const record = dispatchRecords.find(r => r.id === id);
+            if (!record) return;
+            
+            // Fill form with existing data
+            selectTruckType(record.truckType);
+            
+            // Wait a bit for the UI to update, then select other fields
+            setTimeout(() => {
+                selectPlate(record.plateNumber);
+                selectLocation(record.location);
+                
+                setTimeout(() => {
+                    selectSite(record.site);
+                    dispatchDateInput.value = record.date;
+                    
+                    // Remove the original record
+                    dispatchRecords = dispatchRecords.filter(r => r.id !== id);
+                    saveData();
+                    updateSiteTotals();
+                    renderDispatchRecords();
+                    renderSiteTotals();
+                    
+                    // Show edit message
+                    showEditMessage();
+                    
+                    // Scroll to top
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }, 100);
+            }, 100);
+        }
+
+        function removeRecord(id) {
+            dispatchRecords = dispatchRecords.filter(record => record.id !== id);
+            saveData(); // Save to localStorage
+            updateSiteTotals();
+            renderDispatchRecords();
+            renderSiteTotals();
+        }
+
+        function showSuccessMessage() {
+            const message = document.createElement('div');
+            message.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+            message.textContent = '✓ Dispatch record added successfully!';
+            document.body.appendChild(message);
+            
+            setTimeout(() => {
+                message.remove();
+            }, 3000);
+        }
+
+        function showEditMessage() {
+            const message = document.createElement('div');
+            message.className = 'fixed top-4 right-4 bg-blue-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+            message.textContent = '✏️ Record loaded for editing. Make changes and click Add to save.';
+            document.body.appendChild(message);
+            
+            setTimeout(() => {
+                message.remove();
+            }, 4000);
+        }
+
+        // Initialize
+        updateRate();
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97ed253057adfee3',t:'MTc1NzgyNDE4Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
